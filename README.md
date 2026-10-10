@@ -1,3 +1,13 @@
+# AUDIXO V39.1 - MP4 Quality Detection Hotfix
+
+Hotfix for the V39 situation where video title/thumbnail are retrieved, but every MP4 resolution is disabled.
+
+- The server normalizer now recognizes quality arrays from `data`, `result`, `metadata`, `formats`, plus values such as `1080p`, `1080`, height 1080, and `1920x1080`.
+- When API preview sends no readable quality list, MP4 choices are **unverified**, not incorrectly shown as unsupported. A user can choose a resolution to try. The backend request validates actual support.
+- When the API does report a nonempty quality list, unsupported resolutions remain disabled.
+- Existing MP3 defaults, permission checkbox, file titles, API secrets, and Vercel configuration remain unchanged.
+- NO guarantee is made that a particular resolution is available on the remote API server. Live testing requires access to the user's API.
+
 # AUDIXO V39 — Online Audio Studio
 
 A **React + TypeScript + Vite** audio editing project with local waveform editors, Demucs AI separation, effects, mashup editing and one permission-based YouTube MP3/MP4 conversion page.

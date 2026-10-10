@@ -57,18 +57,53 @@ async function json(path:string,body?:Record<string,unknown>,timeout=30000){
  if(data.ok===false)throw Error(String(data.error||data.message||'The conversion request was rejected.'))
  return data
 }
-const unwrap=(v:any)=>v?.data&&typeof v.data==='object'?v.data:v
+const unwrap=(v:any)=>v?.data&&typeof v.data==='object'?v.data:v?.result&&typeof v.result==='object'?v.result:v
 function duration(v:unknown){
  if(typeof v==='number')return Number.isFinite(v)?Math.max(0,v):0
  if(typeof v==='string'&&/^\d+(?::\d{1,2}){1,2}$/.test(v))return v.split(':').reduce((a,c)=>a*60+Number(c),0)
  return Number.isFinite(Number(v))?Math.max(0,Number(v)):0
 }
-function qualities(v:any){
- const rows=[v?.qualities,v?.supported_qualities,v?.video_qualities,v?.formats?.mp4].find(x=>Array.isArray(x))||[]
+function qualities(payload:any){
+ // Several REST YTDL API releases return resolution lists in different places.
+ // Read the original envelope AND its nested data/result/metadata wrappers.
+ const views:any[]=[]
+ const pending=[payload]
+ const seen=new Set<any>()
+ while(pending.length&&views.length<16){
+  const item=pending.shift()
+  if(!item||typeof item!=='object'||seen.has(item))continue
+  seen.add(item);views.push(item)
+  for(const key of ['data','result','metadata','video','info','details']){
+   if(item[key]&&typeof item[key]==='object'&&!Array.isArray(item[key]))pending.push(item[key])
+  }
+ }
  const result:{value:string;label:string}[]=[]
- for(const r of rows){
-  const value=String(typeof r==='string'||typeof r==='number'?r:r?.value??r?.resolution??r?.quality??'').replace(/p$/i,'')
-  if(SUPPORTED.has(value)&&!result.some(x=>x.value===value))result.push({value,label:`${value}p${value==='1080'?' · Full HD':value==='1440'?' · QHD':''}`})
+ const add=(raw:unknown)=>{
+  let candidate:string
+  if(typeof raw==='string'||typeof raw==='number')candidate=String(raw)
+  else if(raw&&typeof raw==='object'){
+   const item=raw as Record<string,unknown>
+   if(item.available===false||item.supported===false) return
+   candidate=String(item.value??item.height??item.resolution??item.quality??item.label??'')
+  }else return
+  // Recognize 1080, 1080p, 1920x1080; do not fabricate unreported qualities.
+  const match=candidate.trim().match(/^(?:(?:\d{2,5}\s*[xX]\s*)?)(240|360|480|720|1080|1440)(?:\s*p)?$/i)
+  if(!match)return
+  const value=match[1]
+  if(SUPPORTED.has(value)&&!result.some(x=>x.value===value))result.push({value,label:`${value}p${value==='1080'?' - Full HD':value==='1440'?' - QHD':''}`})
+ }
+ for(const view of views){
+  for(const key of ['qualities','supported_qualities','video_qualities','videoQualities','available_qualities','availableQualities','resolutions','available_resolutions','video_formats','videoFormats','formats']){
+   const value=view[key]
+   if(Array.isArray(value))value.forEach(add)
+   else if(value&&typeof value==='object'){
+    const video=(value as any).mp4??(value as any).video
+    if(Array.isArray(video))video.forEach(add)
+    else if(video&&typeof video==='object')Object.keys(video).forEach(add)
+    // Quality maps can also be {"720": {...}, "1080": {...}}.
+    Object.keys(value).forEach(add)
+   }
+  }
  }
  return result.sort((a,b)=>Number(a.value)-Number(b.value))
 }
@@ -118,9 +153,9 @@ export default async function handler(req:any,res:any){
    return res.status(200).json({ready:!!(v.ok&&v.authenticated!==false),authenticated:v.authenticated===true,maxConcurrent:Number(v.max_concurrent||0),message:v.ok?'':'REST YTDL service unavailable.'})
   }
   if(action==='meta'){
-   const url=youtube(req.body?.url),v=unwrap(await json('/api/preview',{url},40000))
+   const url=youtube(req.body?.url),raw=await json('/api/preview',{url},40000),v=unwrap(unwrap(raw))
    const id=new URL(url).searchParams.get('v')
-   return res.status(200).json({url,title:text(v.title||v.video_title||v.video?.title||'YouTube video',180),author:text(v.author||v.channel||v.uploader||'',100),duration:duration(v.duration||v.length_seconds||v.video?.duration),thumbnail:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`,qualities:qualities(v)})
+   return res.status(200).json({url,title:text(v.title||v.video_title||v.video?.title||'YouTube video',180),author:text(v.author||v.channel||v.uploader||'',100),duration:duration(v.duration||v.length_seconds||v.video?.duration),thumbnail:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`,qualities:qualities(raw)})
   }
   if(action==='convert'){
    const url=youtube(req.body?.url),format=kind(req.body?.format)

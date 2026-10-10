@@ -11,11 +11,12 @@ function response(){const x=new PassThrough();x.statusCode=200;x.headers={};x.se
 async function call(action,body={},method='POST',query={}){const r=response();await handler({query:{action,...query},method,body},r);return r}
 const url='https://www.youtube.com/watch?v=abcdefghijk';const title='Beautiful Coastline - A creative mix'
 let calls=[]
+let previewPayload={ok:true,data:{title,duration:7201,channel:'Official artist',qualities:[{value:'720',label:'720p'},{value:'1080',label:'1080p'},{value:'2160',label:'2160p'}]}}
 global.fetch=async(requestUrl,options)=>{
  calls.push({url:String(requestUrl),body:options.body?JSON.parse(options.body):null,headers:options.headers})
  const route=String(requestUrl).split('https://ytdl.tiers.rest')[1]
  if(route==='/ytdl/status')return new Response(JSON.stringify({ok:true,authenticated:true,max_concurrent:2}),{headers:{'content-type':'application/json'}})
- if(route==='/api/preview')return new Response(JSON.stringify({ok:true,data:{title,duration:7201,channel:'Official artist',qualities:[{value:'720',label:'720p'},{value:'1080',label:'1080p'},{value:'2160',label:'2160p'}]}}),{headers:{'content-type':'application/json'}})
+ if(route==='/api/preview')return new Response(JSON.stringify(previewPayload),{headers:{'content-type':'application/json'}})
  if(route==='/api/download')return new Response(JSON.stringify({ok:true,job_id:options.body?.includes('"mp4"')?'job_mp4':'job_mp3',status:'queued'}),{headers:{'content-type':'application/json'}})
  if(route?.includes('/api/download/status/'))return new Response(JSON.stringify({status:'completed',job_id:route.split('/').at(-1)}),{headers:{'content-type':'application/json'}})
  if(route?.includes('/api/download/file/')){
@@ -33,6 +34,18 @@ global.fetch=async(requestUrl,options)=>{
  r=await call('meta',{url});assert.equal(r.payload.duration,7201);assert.equal(r.payload.title,title)
  assert.deepEqual(r.payload.qualities.map(q=>q.value),['720','1080'])
  assert.deepEqual(calls.at(-1).body,{url})
+ // The live API contract can place qualities outside data, or in nested formats.
+ previewPayload={ok:true,title,qualities:[{value:'480p'},{value:'1080p'}]}
+ r=await call('meta',{url});assert.deepEqual(r.payload.qualities.map(q=>q.value),['480','1080'])
+ previewPayload={ok:true,data:{title},qualities:[{height:720},{resolution:'1920x1080'}]}
+ r=await call('meta',{url});assert.deepEqual(r.payload.qualities.map(q=>q.value),['720','1080'])
+ previewPayload={ok:true,result:{data:{title,metadata:{formats:{mp4:['240p','360p',{quality:'1440p'}]}}}}}
+ r=await call('meta',{url});assert.deepEqual(r.payload.qualities.map(q=>q.value),['240','360','1440'])
+ previewPayload={ok:true,data:{title}}
+ r=await call('meta',{url});assert.deepEqual(r.payload.qualities,[])
+ // The frontend explicitly enables an unverified Try mode for this case.
+ const ui=fs.readFileSync(path.join(process.cwd(),'src/pages/YouTubeConverter.tsx'),'utf8')
+ assert.ok(ui.includes('Try - unverified')&&ui.includes('!reported||available'))
  r=await call('convert',{url,format:'mp3'});assert.equal(r.payload.id,'job_mp3');assert.equal(r.payload.requestedQuality,'320')
  assert.deepEqual(calls.at(-1).body,{url,format:'mp3',bitrate:320})
  assert.equal(calls.at(-1).headers.Authorization,'Bearer sample-test-secret')
@@ -53,6 +66,6 @@ global.fetch=async(requestUrl,options)=>{
  await download('job_mp3','mp3','audio/mpeg',`${title} (Audixo MP3).mp3`)
  await download('job_mp4','mp4','video/mp4',`${title} (Audixo MP4).mp4`)
  assert.ok(calls.every(row=>row.url.startsWith('https://ytdl.tiers.rest/')))
- console.log('PASS 15 offline contract checks: API health, 2-hour metadata, available qualities, formats, 320 target, job polling, MP3 & MP4 streams, exact sanitized filename, auth, invalid input.')
+ console.log('PASS offline API contract and MP4 quality-shape checks: API health, 2-hour metadata, available qualities, formats, 320 target, job polling, MP3 & MP4 streams, exact sanitized filename, auth, invalid input.')
  console.log('NOTE: 2-hour duration is only mock metadata, not a real 2-hour conversion test. Live upstream, MP3 bitrate and Vercel streaming remain unverified.')
 })().catch(e=>{console.error(e);process.exit(1)})

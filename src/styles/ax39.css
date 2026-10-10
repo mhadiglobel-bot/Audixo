@@ -177,3 +177,9 @@ button,select,a,input{touch-action:manipulation}
 .ax29-track-lane{background:#f9fbff!important;border-bottom:1px solid #e8eaf6!important}
 .ax25-studio-brand .ax38-logo:not(.compact) img{width:134px!important}
 @media(max-width:700px){.v13-beginner-flow{border-radius:17px!important;flex-wrap:wrap}.ax27-tool-hero,.v13-tool-hero{padding-top:42px!important}.ax29-mashup-shell{padding:12px!important}.ax27-workbench{padding:11px!important}.ax39-step-content h2{font-size:17px}}
+
+/* AUDIXO V39.1: Do not disable all MP4 buttons just because preview omitted quality metadata. */
+.ax39-quality-grid>button.unverified{border-style:dashed;background:#f9fbff}
+.ax39-quality-grid>button.unverified:hover:not(:disabled){border-color:#7869e5;background:#f3f0ff;box-shadow:0 7px 22px rgba(112,89,216,.11)}
+.ax39-quality-grid>button.unverified small{color:#78618e}
+.ax39-quality-warning{background:#fff9ed;border:1px solid #f6e1b6;color:#865b19!important;border-radius:11px;padding:11px 13px;margin:10px 0 0!important}
