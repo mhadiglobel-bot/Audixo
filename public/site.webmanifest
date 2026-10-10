@@ -1,0 +1,12 @@
+{
+  "name": "Audixo Studio",
+  "short_name": "Audixo",
+  "description": "A light, fast browser audio studio for trimming, recording, vocal separation, sound shaping and MP3/WAV export.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fbff",
+  "theme_color": "#f9fbff",
+  "icons": [
+    {"src": "/favicon.png?v=38", "sizes": "256x256", "type": "image/png"}
+  ]
+}

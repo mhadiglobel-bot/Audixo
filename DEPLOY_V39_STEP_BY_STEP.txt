@@ -1,0 +1,98 @@
+AUDIXO V39 -- NEW GITHUB REPO + VERCEL DEPLOYMENT GUIDE
+=========================================================
+
+1. CREATE A NEW GITHUB REPOSITORY
+   - Suggested name: audixo-final-v39
+   - Upload the CONTENTS of the ZIP into the repository ROOT (not a nested folder).
+   - Confirm GitHub root contains package.json, package-lock.json, src/, api/, public/, vercel.json, index.html.
+   - Do not upload .env files with secrets. node_modules and dist must not be uploaded.
+
+2. CREATE A NEW VERCEL PROJECT
+   - Import the new GitHub repository.
+   - Project Name: audixo-final-v39 (or another available project name).
+   - Root Directory: ./
+   - Application Preset / Framework: Vite
+   - Build Command: npm run build
+   - Output Directory: dist
+   - Install Command: npm ci
+   - Node.js Runtime: 20.x or a newer supported version.
+
+3. ENVIRONMENT VARIABLES (VERCEL > PROJECT SETTINGS > ENVIRONMENT VARIABLES)
+
+   VARIABLE 1 -- REQUIRED
+   Key:   AUDIXO_YTDL_BASE_URL
+   Value: https://ytdl.tiers.rest
+
+   VARIABLE 2 -- CONDITIONAL; DO NOT INVENT A TOKEN
+   Key:   AUDIXO_YTDL_AUTH_TOKEN
+   Value: (Only the real server-to-server Bearer token IF your backend verifies one.)
+   If your API does not implement Bearer authentication, DO NOT ADD this variable.
+   If your API uses a browser login session/cookie, simply setting a guessed token will NOT work.
+   Your API backend must support server-to-server authentication for reliable conversion.
+
+   VARIABLE 3 -- OPTIONAL AFTER FIRST DEPLOY
+   Key:   VITE_SITE_URL
+   Value: https://YOUR-ACTUAL-NEW-DOMAIN.vercel.app
+   Replace placeholder with Vercel's ACTUAL assigned production domain.
+   If you don't know that URL, OMIT this variable on first deploy. Add it after the first
+   deployment and redeploy. The build can finish without it, but canonical and sitemap
+   URLs use a temporary fallback when Vercel does not expose its assigned domain.
+
+   Environments for configured variables: Production and Preview.
+   Optional AUTH_SCHEME: defaults to Bearer; set AUDIXO_YTDL_AUTH_SCHEME only if your backend
+   expects a different Authorization scheme. Keep credentials server-only.
+
+4. DEPLOY
+   - Click Deploy and wait for the Vercel build log to finish.
+   - If build fails, copy the first failing ERROR line. Do not guess variables.
+   - Check /tools/youtube-to-mp3 and the Home, Contact, Vocals and Studio pages.
+   - In Vercel, the API route is /api/media (handled by api/media.ts).
+   - No extra Python runtime on Vercel is required: the Python conversion service stays
+     on your existing separate server at ytdl.tiers.rest.
+
+5. ACTUAL API TESTS (AFTER DEPLOYMENT)
+   - /tools/youtube-to-mp3 should show 'Conversion API connected'.
+   - Paste a YouTube video URL you own/have permission to download; Analyze.
+   - The preview title and duration must match the source.
+   - MP3 mode: only '320 kbps' is displayed; choose Download MP3.
+   - Inspect the saved file with ffprobe: ffprobe -v error -show_entries stream=codec_name,bit_rate -of default=noprint_wrappers=1 YOUR_FILE.mp3
+   - The server is ASKED for 320, but an actual 320 kbps file is not verified until inspected.
+   - MP4 mode: choose a resolution marked Available by /api/preview, then download.
+   - Confirm the filename has 'Original YouTube Title (Audixo MP3).mp3' or
+     'Original YouTube Title (Audixo MP4).mp4'.
+   - Confirm file opens and contains expected audio/video using ffprobe or media player.
+   - Verify mobile and desktop layouts, stems, full editor and timeline operations.
+
+6. 2-HOUR VIDEO LIMITATION
+   - Background jobs are polled for up to 90 minutes. That does NOT guarantee a 2-hour source.
+   - A full 2-hour MP4 may exceed your REST API storage/CPU/network quota or Vercel
+     serverless response-streaming/time limits. V39 proxies file data through Vercel.
+   - For very large MP4 files, a future production hardening step is to have your
+     backend issue short-lived HTTPS signed download links from object storage,
+     rather than stream hundreds of MB through a Vercel function.
+
+7. OFFICIAL CONTACT EMAIL LATER
+   - Open GitHub > src > config > site.ts.
+   - Find: const manualSupportEmail=''
+   - Replace with: const manualSupportEmail='support@yourdomain.com'
+   - Commit the change. Vercel redeploys automatically.
+   - Until then, Contact shows 'Official email coming soon' and no form.
+
+8. IF A VIDEO DOES NOT WORK
+   - Open Vercel Project > Logs; inspect /api/media errors and upstream response status.
+   - A backend response of 'authenticated:true' in YOUR OWN browser only proves that
+     status call worked in that browser. It does not prove Vercel has server access.
+   - POST /api/preview must accept {url}. POST /api/download must accept
+     {url,format:'mp3',bitrate:320} or fallback {url,format:'mp3'}, OR
+     {url,format:'mp4',quality:'1080'}.
+   - The server must return a valid job_id and background status/file endpoints.
+   - Ensure CORS and auth policy allow server-to-server Vercel calls if needed.
+   - Vercel secret tokens should never be committed, emailed or pasted publicly.
+
+VALIDATION PERFORMED BEFORE PACKAGING
+   - 69 TypeScript/TSX files: syntax parsed successfully.
+   - 15 mock API assertions: passed for both formats, file headers, titles, queues, auth, inputs.
+   - Real ytdl.tiers.rest server and full browser production build could not be verified
+     in the current environment (external registry/domain DNS inaccessible).
+   - Actual Demucs isolation quality, real 320 kbps output, and two-hour source download
+     have NOT been validated. Test with authorized media before relying on them.

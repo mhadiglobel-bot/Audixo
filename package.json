@@ -1,0 +1,35 @@
+{
+  "name": "audixo-studio",
+  "private": true,
+  "version": "39.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/prepare-ort-runtime.mjs && tsc --noEmit && vite build && node scripts/seo-build.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "test:api": "node scripts/test-media-proxy.cjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
+    "demucs-web": "1.0.2",
+    "onnxruntime-web": "1.24.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vercel/node": "13.0.2",
+    "@vitejs/plugin-react": "4.3.4",
+    "esbuild": "0.21.5",
+    "typescript": "5.6.3",
+    "vite": "5.4.21"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
